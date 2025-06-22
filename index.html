@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>暗号変換器（双方向）</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    textarea, select { width: 100%; padding: 10px; font-size: 1em; margin-top: 10px; }
+    label { font-weight: bold; margin-top: 20px; display: block; }
+  </style>
+</head>
+<body>
+  <h1>暗号変換器（暗号化／復号）</h1>
+
+  <label for="mode">モード選択：</label>
+  <select id="mode">
+    <option value="encode">🔐 暗号化（かな→漢字＋数字）</option>
+    <option value="decode">🔓 復号（漢字＋数字→かな）</option>
+  </select>
+
+  <label for="inputText">入力：</label>
+  <textarea id="inputText" rows="3" placeholder="例：かくにん301 または 朧霧忍隠HZG"></textarea>
+
+  <label for="outputText">変換結果：</label>
+  <textarea id="outputText" rows="3" readonly></textarea>
+
+  <script>
+    const kanaToKanji = {
+      "あ":"龍","い":"鶴","う":"霞","え":"雷","お":"鷲",
+      "か":"朧","き":"鳳","く":"霧","け":"翼","こ":"斑",
+      "さ":"夜","し":"天","す":"次","せ":"雁","そ":"鷹",
+      "た":"虎","ち":"鬼","つ":"蓮","て":"菊","と":"漣",
+      "な":"夏","に":"忍","ぬ":"獣","ね":"影","の":"夢",
+      "は":"芒","ひ":"火","ふ":"蓬","へ":"舟","ほ":"灯",
+      "ま":"峰","み":"水","む":"雲","め":"霜","も":"松",
+      "や":"弓","ゆ":"雪","よ":"凪",
+      "ら":"雷","り":"号","る":"湖","れ":"慧","ろ":"露",
+      "わ":"和","を":"宇","ん":"隠"
+    };
+
+    const digitMap = { "0":"Z","1":"G","2":"O","3":"H","4":"J","5":"F","6":"P","7":"X","8":"Y","9":"I" };
+    const reverseKana = Object.fromEntries(Object.entries(kanaToKanji).map(([k,v]) => [v,k]));
+    const reverseDigit = Object.fromEntries(Object.entries(digitMap).map(([k,v]) => [v,k]));
+
+    const dakutenMap = {
+      'が':'か-','ぎ':'き-','ぐ':'く-','げ':'け-','ご':'こ-',
+      'ざ':'さ-','じ':'し-','ず':'す-','ぜ':'せ-','ぞ':'そ-',
+      'だ':'た-','ぢ':'ち-','づ':'つ-','で':'て-','ど':'と-',
+      'ば':'は-','び':'ひ-','ぶ':'ふ-','べ':'へ-','ぼ':'ほ-',
+      'ゔ':'う-'
+    };
+    const handakuMap = {
+      'ぱ':'は^','ぴ':'ひ^','ぷ':'ふ^','ぺ':'へ^','ぽ':'ほ^'
+    };
+    const smallKanaMap = {
+      'ぁ':'あ\'','ぃ':'い\'','ぅ':'う\'','ぇ':'え\'','ぉ':'お\'',
+      'ゃ':'や\'','ゅ':'ゆ\'','ょ':'よ\'','っ':'つ\''
+    };
+
+    function encode(text) {
+      let result = '';
+      for (let char of text) {
+        if (digitMap[char]) {
+          result += digitMap[char];
+        } else if (dakutenMap[char]) {
+          result += kanaToKanji[dakutenMap[char][0]] + '-';
+        } else if (handakuMap[char]) {
+          result += kanaToKanji[handakuMap[char][0]] + '^';
+        } else if (smallKanaMap[char]) {
+          result += kanaToKanji[smallKanaMap[char][0]] + '\'';
+        } else if (kanaToKanji[char]) {
+          result += kanaToKanji[char];
+        } else {
+          result += char;
+        }
+      }
+      return result;
+    }
+
+    function decode(text) {
+      let result = '';
+      for (let i = 0; i < text.length; i++) {
+        const c = text[i];
+        const next = text[i + 1];
+        if (reverseDigit[c]) {
+          result += reverseDigit[c];
+        } else if (next === '-') {
+          result += Object.entries(dakutenMap).find(([k,v]) => v === reverseKana[c] + '-')?.[0] || c;
+          i++;
+        } else if (next === '^') {
+          result += Object.entries(handakuMap).find(([k,v]) => v === reverseKana[c] + '^')?.[0] || c;
+          i++;
+        } else if (next === "'") {
+          result += Object.entries(smallKanaMap).find(([k,v]) => v === reverseKana[c] + "'")?.[0] || c;
+          i++;
+        } else {
+          result += reverseKana[c] || c;
+        }
+      }
+      return result;
+    }
+
+    const inputEl = document.getElementById("inputText");
+    const outputEl = document.getElementById("outputText");
+    const modeEl = document.getElementById("mode");
+
+    inputEl.addEventListener("input", convert);
+    modeEl.addEventListener("change", convert);
+
+    function convert() {
+      const mode = modeEl.value;
+      const text = inputEl.value;
+      const result = (mode === "encode") ? encode(text) : decode(text);
+      outputEl.value = result;
+    }
+  </script>
+</body>
+</html>
